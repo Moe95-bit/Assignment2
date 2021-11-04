@@ -17,8 +17,19 @@ using System.Xml.Linq;
 
 namespace Assignment2
 {
+
+
+    public class Article
+    {
+        public string SiteName { get; set; }
+        public DateTime Published { get; set; }
+        public string Title { get; set; }
+
+    }
+
     public partial class MainWindow : Window
     {
+        private List<Article> articles = new List<Article>();
         private Thickness spacing = new Thickness(5);
         private HttpClient http = new HttpClient();
         // We will need these as instance variables to access in event handlers.
@@ -79,6 +90,8 @@ namespace Assignment2
                 Margin = spacing,
                 Padding = spacing
             };
+
+            addFeedButton.Click += btn_add_feed_click;
             grid.Children.Add(addFeedButton);
             Grid.SetColumn(addFeedButton, 2);
 
@@ -104,8 +117,10 @@ namespace Assignment2
             {
                 Content = "Load Articles",
                 Margin = spacing,
-                Padding = spacing
+                Padding = spacing,
             };
+
+            loadArticlesButton.Click += btn_load_click;
             grid.Children.Add(loadArticlesButton);
             Grid.SetRow(loadArticlesButton, 1);
             Grid.SetColumn(loadArticlesButton, 2);
@@ -146,16 +161,55 @@ namespace Assignment2
             }
         }
 
+        private void btn_add_feed_click(object sender, RoutedEventArgs e)
+        {
+            var test = LoadDocumentAsync(addFeedTextBox.Text);
+
+        }
+
+
+
+        private void btn_load_click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+
+
         private async Task<XDocument> LoadDocumentAsync(string url)
         {
             // This is just to simulate a slow/large data transfer and make testing easier.
             // Remove it if you want to.
+
+
             await Task.Delay(1000);
             var response = await http.GetAsync(url);
             response.EnsureSuccessStatusCode();
             var stream = await response.Content.ReadAsStreamAsync();
-            var feed = XDocument.Load(stream);
-            return feed;
+            var feedFromUrl = XDocument.Load(stream);
+
+            string ArticleHost = feedFromUrl.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
+
+            var list = (from x in feedFromUrl.Descendants("item")
+                        select new {
+                            title = x.Element("title").Value,
+                            link = x.Element("link").Value,
+                            published = x.Element("pubDate").Value
+
+                        });
+
+            for(int i = 0; i < 5; i++)
+            {
+                Article article = new Article
+                {
+                    Title = list.ElementAt(i).title,
+                    Published = DateTime.Parse(list.ElementAt(i).published),
+                    SiteName = ArticleHost
+                };
+                articles.Add(article);
+            }
+           
+            return feedFromUrl;
         }
     }
 }

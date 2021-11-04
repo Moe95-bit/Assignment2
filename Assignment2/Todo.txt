@@ -1,0 +1,7 @@
+﻿1. Felhantering
+
+2. Klasser och dess relationer
+
+3. Hantera data från URL
+
+4. Async optimerat
