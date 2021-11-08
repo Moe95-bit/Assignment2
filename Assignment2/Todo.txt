@@ -1,7 +1,15 @@
 ﻿1. Felhantering
 
-2. Klasser och dess relationer
+2. Klasser och dess relationer *
 
-3. Hantera data från URL
+3. Hantera data från URL *
 
 4. Async optimerat
+
+
+FRÅGOR TILL LÄRARE
+
+- Ska vi använda en local lista i programmet eller är tanken
+att vi ska ladda artiklarna från webben vid varje "load articles"?
+
+- Vid All feeds; ska det visas 5 artiklar totalt eller 5 x antal feeds.

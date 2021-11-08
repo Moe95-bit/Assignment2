@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -134,31 +135,32 @@ namespace Assignment2
             Grid.SetRow(articlePanel, 2);
             Grid.SetColumnSpan(articlePanel, 3);
 
-            // These are just placeholders.
-            // Replace them with your own code that shows actual articles.
-            for (int i = 0; i < 3; i++)
-            {
-                var articlePlaceholder = new StackPanel
-                {
-                    Orientation = Orientation.Vertical,
-                    Margin = spacing
-                };
-                articlePanel.Children.Add(articlePlaceholder);
+            //These are just placeholders.
+            //Replace them with your own code that shows actual articles.
 
-                var articleTitle = new TextBlock
-                {
-                    Text = "2021-01-02 12:34 - Placeholder for an actual article title #" + (i + 1),
-                    FontWeight = FontWeights.Bold,
-                    TextTrimming = TextTrimming.CharacterEllipsis
-                };
-                articlePlaceholder.Children.Add(articleTitle);
+            //for (int i = 0; i < 3; i++)
+            //{
+            //    var articlePlaceholder = new StackPanel
+            //    {
+            //        Orientation = Orientation.Vertical,
+            //        Margin = spacing
+            //    };
+            //    articlePanel.Children.Add(articlePlaceholder);
 
-                var articleWebsite = new TextBlock
-                {
-                    Text = "Website name #" + (i + 1)
-                };
-                articlePlaceholder.Children.Add(articleWebsite);
-            }
+            //    var articleTitle = new TextBlock
+            //    {
+            //        Text = "2021-01-02 12:34 - Placeholder for an actual article title #" + (i + 1),
+            //        FontWeight = FontWeights.Bold,
+            //        TextTrimming = TextTrimming.CharacterEllipsis
+            //    };
+            //    articlePlaceholder.Children.Add(articleTitle);
+
+            //    var articleWebsite = new TextBlock
+            //    {
+            //        Text = "Website name #" + (i + 1)
+            //    };
+            //    articlePlaceholder.Children.Add(articleWebsite);
+            //}
         }
 
         private void btn_add_feed_click(object sender, RoutedEventArgs e)
@@ -168,10 +170,47 @@ namespace Assignment2
         }
 
 
-
         private void btn_load_click(object sender, RoutedEventArgs e)
         {
 
+            loadArticlesButton.IsEnabled = false;
+            articlePanel.Children.Clear();
+
+            var articlePlaceholder = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Margin = spacing
+            };
+            articlePanel.Children.Add(articlePlaceholder);
+
+            IEnumerable<Article> articleSiteSort;
+
+            if (selectFeedComboBox.SelectedItem.ToString() == "Select All")
+            {
+                articleSiteSort = articles.OrderByDescending(a => a.Published);
+            }
+            else
+            {
+                articleSiteSort = articles.Where(a => a.SiteName == selectFeedComboBox.SelectedItem.ToString());
+            }
+
+            foreach (var article in articleSiteSort)
+            {
+                var articleTitle = new TextBlock
+                {
+                    Text = article.Published + " - " + article.Title,
+                    FontWeight = FontWeights.Bold,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
+                var siteName = new TextBlock
+                {
+                    Text = article.SiteName,
+                };
+                articlePlaceholder.Children.Add(articleTitle);
+                articlePlaceholder.Children.Add(siteName);
+
+            }
+            loadArticlesButton.IsEnabled = true;
         }
 
 
@@ -181,6 +220,7 @@ namespace Assignment2
             // This is just to simulate a slow/large data transfer and make testing easier.
             // Remove it if you want to.
 
+            addFeedButton.IsEnabled = false;
 
             await Task.Delay(1000);
             var response = await http.GetAsync(url);
@@ -190,25 +230,35 @@ namespace Assignment2
 
             string ArticleHost = feedFromUrl.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
 
+            if (selectFeedComboBox.Items.Count == 0)
+            {
+                selectFeedComboBox.Items.Add("Select All");
+            }
+            selectFeedComboBox.Items.Add(ArticleHost);
+            selectFeedComboBox.SelectedIndex = selectFeedComboBox.Items.Count -1;
+
             var list = (from x in feedFromUrl.Descendants("item")
-                        select new {
+                        select new
+                        {
                             title = x.Element("title").Value,
                             link = x.Element("link").Value,
                             published = x.Element("pubDate").Value
 
                         });
 
-            for(int i = 0; i < 5; i++)
+            for (int i = 0; i < 5; i++)
             {
                 Article article = new Article
                 {
                     Title = list.ElementAt(i).title,
-                    Published = DateTime.Parse(list.ElementAt(i).published),
+                    Published = DateTime.ParseExact(list.ElementAt(i).published.Substring(0, 25), "ddd, dd MMM yyyy HH:mm:ss", CultureInfo.InvariantCulture),
                     SiteName = ArticleHost
                 };
                 articles.Add(article);
             }
-           
+
+            addFeedButton.IsEnabled = true;
+
             return feedFromUrl;
         }
     }
