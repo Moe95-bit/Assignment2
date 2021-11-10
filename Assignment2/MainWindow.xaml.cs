@@ -25,12 +25,17 @@ namespace Assignment2
         public string SiteName { get; set; }
         public DateTime Published { get; set; }
         public string Title { get; set; }
+    }
 
+    public class Feed
+    {
+        public string SiteName { get; set; }
+        public string Url { get; set; }
     }
 
     public partial class MainWindow : Window
     {
-        private List<Article> articles = new List<Article>();
+        private List<Feed> feeds = new List<Feed>();
         private Thickness spacing = new Thickness(5);
         private HttpClient http = new HttpClient();
         // We will need these as instance variables to access in event handlers.
@@ -165,62 +170,123 @@ namespace Assignment2
 
         private void btn_add_feed_click(object sender, RoutedEventArgs e)
         {
-            var test = LoadDocumentAsync(addFeedTextBox.Text);
+
+            var loadfeed = LoadFeed();
 
         }
 
+        private async Task<string> LoadFeed()
+        {
+            addFeedButton.IsEnabled = false;
+
+            Feed searchFeed = new Feed
+            {
+                Url = addFeedTextBox.Text
+            };
+            var feedDocument = await LoadFeedAsync(addFeedTextBox.Text);
+
+            string PublisherWebsite = feedDocument.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
+
+
+            if (selectFeedComboBox.Items.Count == 0)
+            {
+                selectFeedComboBox.Items.Add("Select All");
+            }
+            selectFeedComboBox.Items.Add(PublisherWebsite);
+            selectFeedComboBox.SelectedIndex = selectFeedComboBox.Items.Count - 1;
+
+            Feed feed = new Feed
+            {
+                SiteName = PublisherWebsite,
+                Url = addFeedTextBox.Text
+            };
+
+            this.feeds.Add(feed);
+
+            addFeedButton.IsEnabled = true;
+
+            return PublisherWebsite;
+        }
 
         private void btn_load_click(object sender, RoutedEventArgs e)
         {
 
+           var display = DisplayArticles();
+
+
+        }
+
+        private async Task<List<Article>> DisplayArticles()
+        {
             loadArticlesButton.IsEnabled = false;
-            articlePanel.Children.Clear();
 
             var articlePlaceholder = new StackPanel
             {
                 Orientation = Orientation.Vertical,
                 Margin = spacing
             };
+
+            articlePanel.Children.Clear();
             articlePanel.Children.Add(articlePlaceholder);
 
-            IEnumerable<Article> articleSiteSort;
-
-            if (selectFeedComboBox.SelectedItem.ToString() == "Select All")
+            if (selectFeedComboBox.Text == "Select All")
             {
-                articleSiteSort = articles.OrderByDescending(a => a.Published);
+
+                var ArticlesFromFeeds = feeds.Select(LoadArticlesAsync).ToList();
+                var ListOfArticlesLists = await Task.WhenAll(ArticlesFromFeeds);
+                var AllArticles = ListOfArticlesLists.SelectMany(a => a).ToList();
+
+                foreach (var article in AllArticles.OrderByDescending(a => a.Published))
+                {
+                    var articleTitleAndTime = new TextBlock
+                    {
+                        Text = article.Published + " - " + article.Title,
+                        FontWeight = FontWeights.Bold,
+                        TextTrimming = TextTrimming.CharacterEllipsis
+                    };
+                    var articleSiteName = new TextBlock
+                    {
+                        Text = article.SiteName,
+                    };
+                    articlePlaceholder.Children.Add(articleTitleAndTime);
+                    articlePlaceholder.Children.Add(articleSiteName);
+                }
             }
             else
             {
-                articleSiteSort = articles.Where(a => a.SiteName == selectFeedComboBox.SelectedItem.ToString());
+                Feed feed = feeds.Single(f => f.SiteName == selectFeedComboBox.Text);
+
+                var articleList =  await LoadArticlesAsync(feed);
+                foreach (var article in articleList)
+                {
+                    var articleTitleAndTime = new TextBlock
+                    {
+                        Text = article.Published + " - " + article.Title,
+                        FontWeight = FontWeights.Bold,
+                        TextTrimming = TextTrimming.CharacterEllipsis
+                    };
+                    var articleSiteName = new TextBlock
+                    {
+                        Text = article.SiteName,
+                    };
+                    articlePlaceholder.Children.Add(articleTitleAndTime);
+                    articlePlaceholder.Children.Add(articleSiteName);
+                }
             }
 
-            foreach (var article in articleSiteSort)
-            {
-                var articleTitle = new TextBlock
-                {
-                    Text = article.Published + " - " + article.Title,
-                    FontWeight = FontWeights.Bold,
-                    TextTrimming = TextTrimming.CharacterEllipsis
-                };
-                var siteName = new TextBlock
-                {
-                    Text = article.SiteName,
-                };
-                articlePlaceholder.Children.Add(articleTitle);
-                articlePlaceholder.Children.Add(siteName);
-
-            }
             loadArticlesButton.IsEnabled = true;
+
+            return new List<Article>();
         }
 
 
 
-        private async Task<XDocument> LoadDocumentAsync(string url)
+        private async Task<XDocument> LoadFeedAsync(string url)
         {
             // This is just to simulate a slow/large data transfer and make testing easier.
             // Remove it if you want to.
 
-            addFeedButton.IsEnabled = false;
+            //Feed Feed = feed;
 
             await Task.Delay(1000);
             var response = await http.GetAsync(url);
@@ -228,14 +294,23 @@ namespace Assignment2
             var stream = await response.Content.ReadAsStreamAsync();
             var feedFromUrl = XDocument.Load(stream);
 
-            string ArticleHost = feedFromUrl.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
 
-            if (selectFeedComboBox.Items.Count == 0)
-            {
-                selectFeedComboBox.Items.Add("Select All");
-            }
-            selectFeedComboBox.Items.Add(ArticleHost);
-            selectFeedComboBox.SelectedIndex = selectFeedComboBox.Items.Count -1;
+            return feedFromUrl;
+        }
+
+        private async Task<List<Article>> LoadArticlesAsync(Feed feed)
+        {
+            // This is just to simulate a slow/large data transfer and make testing easier.
+            // Remove it if you want to.     
+
+            await Task.Delay(1000);
+            var response = await http.GetAsync(feed.Url);
+            response.EnsureSuccessStatusCode();
+            var stream = await response.Content.ReadAsStreamAsync();
+            var feedFromUrl = XDocument.Load(stream);
+            string PublisherWebsite = feedFromUrl.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
+
+            List<Article> articles = new List<Article>();
 
             var list = (from x in feedFromUrl.Descendants("item")
                         select new
@@ -252,14 +327,14 @@ namespace Assignment2
                 {
                     Title = list.ElementAt(i).title,
                     Published = DateTime.ParseExact(list.ElementAt(i).published.Substring(0, 25), "ddd, dd MMM yyyy HH:mm:ss", CultureInfo.InvariantCulture),
-                    SiteName = ArticleHost
+                    SiteName = PublisherWebsite
                 };
                 articles.Add(article);
             }
 
-            addFeedButton.IsEnabled = true;
-
-            return feedFromUrl;
+            return articles;
         }
+
+    
     }
 }
