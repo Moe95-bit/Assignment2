@@ -144,9 +144,7 @@ namespace Assignment2
 
         private async void btn_add_feed_click(object sender, RoutedEventArgs e)
         { 
-
            await LoadFeed();
-
         }
 
         private async Task LoadFeed()
@@ -162,7 +160,7 @@ namespace Assignment2
 
                 if (selectFeedComboBox.Items.Count == 0)
                 {
-                    selectFeedComboBox.Items.Add("Select All");
+                    selectFeedComboBox.Items.Add("All Feeds");
                 }
                 selectFeedComboBox.Items.Add(PublisherWebsite);
                 selectFeedComboBox.SelectedIndex = selectFeedComboBox.Items.Count - 1;
@@ -173,7 +171,7 @@ namespace Assignment2
                     Url = addFeedTextBox.Text
                 };
 
-                this.feeds.Add(feed);
+                feeds.Add(feed);
             }
             catch (Exception)
             {
@@ -204,7 +202,7 @@ namespace Assignment2
                 articlePanel.Children.Clear();
                 articlePanel.Children.Add(articlePlaceholder);
 
-                if (selectFeedComboBox.Text == "Select All")
+                if (selectFeedComboBox.Text == "All Feeds")
                 {
 
                     var ArticlesFromFeeds = feeds.Select(LoadArticlesAsync).ToList();
@@ -262,8 +260,6 @@ namespace Assignment2
 
         private async Task<XDocument> LoadFeedAsync(string url)
         {
-            // This is just to simulate a slow/large data transfer and make testing easier.
-            // Remove it if you want to.
 
             await Task.Delay(1000);
             var response = await http.GetAsync(url);
@@ -277,8 +273,6 @@ namespace Assignment2
 
         private async Task<List<Article>> LoadArticlesAsync(Feed feed)
         {
-            // This is just to simulate a slow/large data transfer and make testing easier.
-            // Remove it if you want to.     
 
             await Task.Delay(1000);
             var response = await http.GetAsync(feed.Url);
