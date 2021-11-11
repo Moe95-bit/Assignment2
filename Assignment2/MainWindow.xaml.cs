@@ -140,153 +140,130 @@ namespace Assignment2
             Grid.SetRow(articlePanel, 2);
             Grid.SetColumnSpan(articlePanel, 3);
 
-            //These are just placeholders.
-            //Replace them with your own code that shows actual articles.
-
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    var articlePlaceholder = new StackPanel
-            //    {
-            //        Orientation = Orientation.Vertical,
-            //        Margin = spacing
-            //    };
-            //    articlePanel.Children.Add(articlePlaceholder);
-
-            //    var articleTitle = new TextBlock
-            //    {
-            //        Text = "2021-01-02 12:34 - Placeholder for an actual article title #" + (i + 1),
-            //        FontWeight = FontWeights.Bold,
-            //        TextTrimming = TextTrimming.CharacterEllipsis
-            //    };
-            //    articlePlaceholder.Children.Add(articleTitle);
-
-            //    var articleWebsite = new TextBlock
-            //    {
-            //        Text = "Website name #" + (i + 1)
-            //    };
-            //    articlePlaceholder.Children.Add(articleWebsite);
-            //}
         }
 
-        private void btn_add_feed_click(object sender, RoutedEventArgs e)
-        {
+        private async void btn_add_feed_click(object sender, RoutedEventArgs e)
+        { 
 
-            var loadfeed = LoadFeed();
+           await LoadFeed();
 
         }
 
-        private async Task<string> LoadFeed()
+        private async Task LoadFeed()
         {
-            addFeedButton.IsEnabled = false;
-
-            Feed searchFeed = new Feed
+           
+            try
             {
-                Url = addFeedTextBox.Text
-            };
-            var feedDocument = await LoadFeedAsync(addFeedTextBox.Text);
+                addFeedButton.IsEnabled = false;
+                var feedDocument = await LoadFeedAsync(addFeedTextBox.Text);
+                
+                string PublisherWebsite = feedDocument.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
 
-            string PublisherWebsite = feedDocument.Descendants().Where(s => s.Name == "title").FirstOrDefault().Value;
 
+                if (selectFeedComboBox.Items.Count == 0)
+                {
+                    selectFeedComboBox.Items.Add("Select All");
+                }
+                selectFeedComboBox.Items.Add(PublisherWebsite);
+                selectFeedComboBox.SelectedIndex = selectFeedComboBox.Items.Count - 1;
 
-            if (selectFeedComboBox.Items.Count == 0)
-            {
-                selectFeedComboBox.Items.Add("Select All");
+                Feed feed = new Feed
+                {
+                    SiteName = PublisherWebsite,
+                    Url = addFeedTextBox.Text
+                };
+
+                this.feeds.Add(feed);
             }
-            selectFeedComboBox.Items.Add(PublisherWebsite);
-            selectFeedComboBox.SelectedIndex = selectFeedComboBox.Items.Count - 1;
-
-            Feed feed = new Feed
+            catch (Exception)
             {
-                SiteName = PublisherWebsite,
-                Url = addFeedTextBox.Text
-            };
-
-            this.feeds.Add(feed);
-
+                addFeedButton.IsEnabled = true;
+                MessageBox.Show("Something went wrong reading URL");
+            }
             addFeedButton.IsEnabled = true;
 
-            return PublisherWebsite;
         }
 
-        private void btn_load_click(object sender, RoutedEventArgs e)
+        private async void btn_load_click(object sender, RoutedEventArgs e)
         {
-
-           var display = DisplayArticles();
-
-
+          await DisplayArticles();
         }
 
-        private async Task<List<Article>> DisplayArticles()
+        private async Task DisplayArticles()
         {
-            loadArticlesButton.IsEnabled = false;
-
-            var articlePlaceholder = new StackPanel
+            try
             {
-                Orientation = Orientation.Vertical,
-                Margin = spacing
-            };
+                loadArticlesButton.IsEnabled = false;
 
-            articlePanel.Children.Clear();
-            articlePanel.Children.Add(articlePlaceholder);
-
-            if (selectFeedComboBox.Text == "Select All")
-            {
-
-                var ArticlesFromFeeds = feeds.Select(LoadArticlesAsync).ToList();
-                var ListOfArticlesLists = await Task.WhenAll(ArticlesFromFeeds);
-                var AllArticles = ListOfArticlesLists.SelectMany(a => a).ToList();
-
-                foreach (var article in AllArticles.OrderByDescending(a => a.Published))
+                var articlePlaceholder = new StackPanel
                 {
-                    var articleTitleAndTime = new TextBlock
+                    Orientation = Orientation.Vertical,
+                    Margin = spacing
+                };
+
+                articlePanel.Children.Clear();
+                articlePanel.Children.Add(articlePlaceholder);
+
+                if (selectFeedComboBox.Text == "Select All")
+                {
+
+                    var ArticlesFromFeeds = feeds.Select(LoadArticlesAsync).ToList();
+                    var ListOfArticlesLists = await Task.WhenAll(ArticlesFromFeeds);
+                    var AllArticles = ListOfArticlesLists.SelectMany(a => a).ToList();
+
+                    foreach (var article in AllArticles.OrderByDescending(a => a.Published))
                     {
-                        Text = article.Published + " - " + article.Title,
-                        FontWeight = FontWeights.Bold,
-                        TextTrimming = TextTrimming.CharacterEllipsis
-                    };
-                    var articleSiteName = new TextBlock
+                        var articleTitleAndTime = new TextBlock
+                        {
+                            Text = article.Published + " - " + article.Title,
+                            FontWeight = FontWeights.Bold,
+                            TextTrimming = TextTrimming.CharacterEllipsis
+                        };
+                        var articleSiteName = new TextBlock
+                        {
+                            Text = article.SiteName,
+                        };
+                        articlePlaceholder.Children.Add(articleTitleAndTime);
+                        articlePlaceholder.Children.Add(articleSiteName);
+                    }
+                }
+                else
+                {
+                    Feed feed = feeds.Single(f => f.SiteName == selectFeedComboBox.Text);
+
+                    var articleList = await LoadArticlesAsync(feed);
+                    foreach (var article in articleList)
                     {
-                        Text = article.SiteName,
-                    };
-                    articlePlaceholder.Children.Add(articleTitleAndTime);
-                    articlePlaceholder.Children.Add(articleSiteName);
+                        var articleTitleAndTime = new TextBlock
+                        {
+                            Text = article.Published + " - " + article.Title,
+                            FontWeight = FontWeights.Bold,
+                            TextTrimming = TextTrimming.CharacterEllipsis
+                        };
+                        var articleSiteName = new TextBlock
+                        {
+                            Text = article.SiteName,
+                        };
+                        articlePlaceholder.Children.Add(articleTitleAndTime);
+                        articlePlaceholder.Children.Add(articleSiteName);
+                    }
                 }
             }
-            else
+            catch (Exception)
             {
-                Feed feed = feeds.Single(f => f.SiteName == selectFeedComboBox.Text);
-
-                var articleList =  await LoadArticlesAsync(feed);
-                foreach (var article in articleList)
-                {
-                    var articleTitleAndTime = new TextBlock
-                    {
-                        Text = article.Published + " - " + article.Title,
-                        FontWeight = FontWeights.Bold,
-                        TextTrimming = TextTrimming.CharacterEllipsis
-                    };
-                    var articleSiteName = new TextBlock
-                    {
-                        Text = article.SiteName,
-                    };
-                    articlePlaceholder.Children.Add(articleTitleAndTime);
-                    articlePlaceholder.Children.Add(articleSiteName);
-                }
+                loadArticlesButton.IsEnabled = true;
+                MessageBox.Show("Could not read articles");
             }
+           
 
             loadArticlesButton.IsEnabled = true;
 
-            return new List<Article>();
         }
-
-
 
         private async Task<XDocument> LoadFeedAsync(string url)
         {
             // This is just to simulate a slow/large data transfer and make testing easier.
             // Remove it if you want to.
-
-            //Feed Feed = feed;
 
             await Task.Delay(1000);
             var response = await http.GetAsync(url);
